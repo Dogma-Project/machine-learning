@@ -7,6 +7,7 @@ class TextClassifier {
    * @param {Function} params.stemmer
    */
   constructor({
+    stemmer,
     learningRate,
     trainingThreshold,
     learningAccuracy,
@@ -25,7 +26,7 @@ class TextClassifier {
     this.initValue = 0.5;
     this.modelAccuracy = 0;
     // configs
-    this.stemmer = this._pseudoStemmer;
+    this.stemmer = stemmer || this._pseudoStemmer;
     this.learningRate = learningRate || 0.06;
     this.trainingThreshold = trainingThreshold || 0.99;
     this.learningAccuracy = learningAccuracy || 2;
@@ -188,9 +189,8 @@ class TextClassifier {
    *
    * @param {Object} dataset
    */
-  train(dataset, { stemmer } = {}) {
+  train(dataset) {
     return new Promise((resolve, reject) => {
-      this.stemmer = stemmer || this.stemmer;
       let iteration = 0,
         acc = 0,
         oldAcc = 0;
