@@ -29,7 +29,7 @@ class TextClassifier {
     this._lastAccuracy = -1;
     this._accuracyRepeats = 0;
     this._accuracyRepeatsStopThreshold = 5;
-    this._learningAccuracyStep = 0.1;
+    this._learningAccuracyStep = 0.05;
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
     this.learningRate = learningRate || 0.03;
@@ -216,9 +216,9 @@ class TextClassifier {
         console.log("LOG:", "Learning accuracy", this.learningAccuracy);
         if (this.learningAccuracy > 1 + this._learningAccuracyStep) {
           if (this._lastAccuracy <= acc) {
-            this.learningAccuracy -= this._learningAccuracyStep;
-          } else {
             this.learningAccuracy += this._learningAccuracyStep;
+          } else {
+            this.learningAccuracy -= this._learningAccuracyStep;
           }
         }
         this._lastAccuracy = acc;
