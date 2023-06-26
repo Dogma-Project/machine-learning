@@ -85,7 +85,7 @@ class TextClassifier {
     const val = this.vocabulary.find(
       (item) => item[0] === this.plainVocabulary[token]
     );
-    return val ? val[1] : 0; // edit
+    return val ? val[1] : -1;
   }
 
   _getDiff(a, b) {
@@ -267,7 +267,7 @@ class TextClassifier {
         } else {
           const dlr = this.dlrCache[token];
           const modelize = this._getDiff(dlr[0], dlr[1]);
-          q += Math.floor(modelize) === i ? this.modelizeConstant : 0;
+          q += Math.round(modelize) === i ? this.modelizeConstant : 0;
         }
       });
       result[i] = q / total;
