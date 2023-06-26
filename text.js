@@ -163,12 +163,15 @@ class TextClassifier {
       entry.output = Number(entry.output); // ok
       const result = this.predict(entry.input); // ok
       const predicted = result.output === entry.output;
-      if (predicted) accuracy[1]++;
+
+      // if (predicted) accuracy[1]++;
       let ok = false;
       accuracy[2]++;
-      if (predicted && result.delta > this._learningAccuracy) {
+      if (predicted) {
+        // && result.delta > this._learningAccuracy
         ok = true;
         accuracy[0]++;
+        accuracy[1]++;
       }
       const layerized = this._layerize(tokenized); // ok
       layerized.forEach((token) => {
