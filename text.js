@@ -182,8 +182,8 @@ class TextClassifier {
         Object.keys(value).forEach((key) => {
           key = Number(key);
           const sign = key !== entry.output ? -1 : 1;
-          value[key] =
-            value[key] + sign * value[key] * this.learningRate * Math.random();
+          const addition = sign * this.learningRate * Math.random(); //  value[key] *
+          value[key] += addition;
           if (value[key] > 1 - this.minProbability)
             return (value[key] = 1 - this.minProbability);
           if (value[key] < this.minProbability)
@@ -253,6 +253,7 @@ class TextClassifier {
     const model = this.model;
     if (!model[Object.keys(model)[0]]) return response;
     const tokenized = this._tokenizeMessage(message);
+    if (tokenized.length < 2) return response;
     const layerized = this._layerize(tokenized);
     const result = [];
     for (let i = 0; i < this.outputs.length; i++) {
