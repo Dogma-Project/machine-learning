@@ -87,8 +87,10 @@ class TextClassifier {
 
   _getDiff(a, b) {
     const valA = this._getValue(a);
+    const splitA = [Math.trunc(valA), valA - Math.trunc(valA)];
     const valB = this._getValue(b);
-    return (valA + valB) / 2;
+    const splitB = [Math.trunc(valB), valB - Math.trunc(valB)];
+    return splitA[1] > splitB[1] ? splitA[0] : splitB[0];
   }
 
   /**
@@ -245,7 +247,7 @@ class TextClassifier {
         } else {
           const dlr = this.dlrCache[token];
           const modelize = this._getDiff(dlr[0], dlr[1]);
-          q += Math.round(modelize) === i ? this.modelizeConstant : 0;
+          q += modelize === i ? this.modelizeConstant : 0;
         }
       });
       result[i] = q / total;
