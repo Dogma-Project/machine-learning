@@ -10,7 +10,6 @@ class TextClassifier {
     stemmer,
     learningRate,
     trainingThreshold,
-    learningAccuracy,
     minProbability,
     modelizeConstant,
     splitReg,
@@ -29,12 +28,12 @@ class TextClassifier {
     this._lastAccuracy = -1;
     this._accuracyRepeats = 0;
     this._accuracyRepeatsStopThreshold = 5;
-    this._learningAccuracyStep = 0.05;
+    this._learningAccuracy = 1.4;
+    this._learningAccuracyStep = 0.02;
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
     this.learningRate = learningRate || 0.03;
     this.trainingThreshold = trainingThreshold || 0.99;
-    this.learningAccuracy = 1.5; // learningAccuracy || 1;
     this.minProbability = minProbability || 0.01;
     this.modelizeConstant = modelizeConstant || 0.7;
     // other
@@ -157,16 +156,17 @@ class TextClassifier {
     console.time("train");
     this._makeVocabulary(dataset); // ok
     console.log("LOG:", "Training model. Iteration:", iteration);
-    const accuracy = [0, 0]; // ok
+    const accuracy = [0, 0, 0]; // [cond,exact,total]
     dataset.forEach((entry) => {
       const tokenized = this._tokenizeMessage(entry.input); // ok
       if (tokenized.length < 2) return;
       entry.output = Number(entry.output); // ok
       const result = this.predict(entry.input); // ok
       const predicted = result.output === entry.output;
+      if (predicted) accuracy[1]++;
       let ok = false;
-      accuracy[1]++;
-      if (predicted && result.delta > this.learningAccuracy) {
+      accuracy[2]++;
+      if (predicted && result.delta > this._learningAccuracy) {
         ok = true;
         accuracy[0]++;
       }
@@ -192,7 +192,7 @@ class TextClassifier {
       });
     });
     console.timeEnd("train");
-    return accuracy[0] / accuracy[1];
+    return accuracy;
   }
 
   /**
@@ -201,24 +201,28 @@ class TextClassifier {
    */
   train(dataset) {
     return new Promise((resolve, reject) => {
-      let iteration = 0,
-        acc = 0;
+      let iteration = 0;
+      let acc = 0;
+      let exact = 0;
       let cond1, cond2, cond3;
       do {
-        acc = this._train(dataset, iteration);
+        const result = this._train(dataset, iteration);
+        acc = result[0] / result[2];
+        exact = result[1] / result[2];
         if (acc && this._lastAccuracy === acc) {
           this._accuracyRepeats++;
         } else {
           this._accuracyRepeats = 0;
         }
         console.log("LOG:", "Training accuracy:", acc);
+        console.log("LOG:", "Exact training accuracy:", exact);
         console.log("LOG:", "Accuracy repeats", this._accuracyRepeats);
-        console.log("LOG:", "Learning accuracy", this.learningAccuracy);
-        if (this.learningAccuracy > 1 + this._learningAccuracyStep) {
+        console.log("LOG:", "Learning accuracy", this._learningAccuracy);
+        if (this._learningAccuracy > 1 + this._learningAccuracyStep) {
           if (this._lastAccuracy <= acc) {
-            this.learningAccuracy += this._learningAccuracyStep;
+            this._learningAccuracy += this._learningAccuracyStep;
           } else {
-            this.learningAccuracy -= this._learningAccuracyStep;
+            this._learningAccuracy -= this._learningAccuracyStep;
           }
         }
         this._lastAccuracy = acc;
