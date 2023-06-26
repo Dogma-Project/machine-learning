@@ -28,10 +28,10 @@ class TextClassifier {
     this.ready = false;
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
-    this.learningRate = learningRate || 0.06;
+    this.learningRate = learningRate || 0.03;
     this.trainingThreshold = trainingThreshold || 0.99;
     this.learningAccuracy = learningAccuracy || 2;
-    this.minProbability = minProbability || 0.03;
+    this.minProbability = minProbability || 0.01;
     this.modelizeConstant = modelizeConstant || 0.7;
     // other
     String.prototype.prepare = function () {
@@ -155,12 +155,17 @@ class TextClassifier {
     console.log("LOG:", "Training model. Iteration:", iteration);
     const accuracy = [0, 0]; // ok
     dataset.forEach((entry) => {
+      const tokenized = this._tokenizeMessage(entry.input); // ok
+      if (tokenized.length < 2) return;
       entry.output = Number(entry.output); // ok
       const result = this.predict(entry.input); // ok
       const predicted = result.output === entry.output;
+      let ok = false;
       accuracy[1]++;
-      if (predicted && result.delta >= this.learningAccuracy) accuracy[0]++;
-      const tokenized = this._tokenizeMessage(entry.input); // ok
+      if (predicted && result.delta >= this.learningAccuracy) {
+        ok = true;
+        accuracy[0]++;
+      }
       const layerized = this._layerize(tokenized); // ok
       layerized.forEach((token) => {
         if (!this.model[token]) {
