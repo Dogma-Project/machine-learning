@@ -29,11 +29,12 @@ class TextClassifier {
     this._lastAccuracy = -1;
     this._accuracyRepeats = 0;
     this._accuracyRepeatsStopThreshold = 5;
+    this._learningAccuracyStep = 0.1;
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
     this.learningRate = learningRate || 0.03;
     this.trainingThreshold = trainingThreshold || 0.99;
-    this.learningAccuracy = learningAccuracy || 2;
+    this.learningAccuracy = 1.5; // learningAccuracy || 1;
     this.minProbability = minProbability || 0.01;
     this.modelizeConstant = modelizeConstant || 0.7;
     // other
@@ -165,7 +166,7 @@ class TextClassifier {
       const predicted = result.output === entry.output;
       let ok = false;
       accuracy[1]++;
-      if (predicted && result.delta >= this.learningAccuracy) {
+      if (predicted && result.delta > this.learningAccuracy) {
         ok = true;
         accuracy[0]++;
       }
@@ -201,10 +202,9 @@ class TextClassifier {
   train(dataset) {
     return new Promise((resolve, reject) => {
       let iteration = 0,
-        acc = 0,
-        oldAcc = 0;
+        acc = 0;
+      let cond1, cond2, cond3;
       do {
-        // oldAcc = acc;
         acc = this._train(dataset, iteration);
         if (acc && this._lastAccuracy === acc) {
           this._accuracyRepeats++;
@@ -212,14 +212,23 @@ class TextClassifier {
           this._accuracyRepeats = 0;
         }
         console.log("LOG:", "Training accuracy:", acc);
+        console.log("LOG:", "Accuracy repeats", this._accuracyRepeats);
+        console.log("LOG:", "Learning accuracy", this.learningAccuracy);
+        if (this.learningAccuracy > 1 + this._learningAccuracyStep) {
+          if (this._lastAccuracy <= acc) {
+            this.learningAccuracy -= this._learningAccuracyStep;
+          } else {
+            this.learningAccuracy += this._learningAccuracyStep;
+          }
+        }
         this._lastAccuracy = acc;
         this.modelAccuracy = acc;
         iteration++;
-        console.log("Accuracy repeats", this._accuracyRepeats);
-      } while (
-        acc < this.trainingThreshold &&
-        this._accuracyRepeats < this._accuracyRepeatsStopThreshold
-      ); // && acc !== oldAcc
+
+        cond1 = acc < this.trainingThreshold;
+        cond2 = this._accuracyRepeats < this._accuracyRepeatsStopThreshold;
+        cond3 = acc !== 1;
+      } while (cond1 && cond2 && cond3);
       this.ready = true;
       resolve({
         accuracy: acc,
