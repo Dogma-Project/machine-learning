@@ -28,7 +28,7 @@ class TextClassifier {
     this._lastAccuracy = -1;
     this._accuracyRepeats = 0;
     this._accuracyRepeatsStopThreshold = 10;
-    this._learningAccuracy = 2.5;
+    this._learningAccuracy = 2;
     this._learningAccuracyStep = 0.05;
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
