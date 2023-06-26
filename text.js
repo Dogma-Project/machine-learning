@@ -12,7 +12,6 @@ class TextClassifier {
     trainingThreshold,
     minProbability,
     modelizeConstant,
-    splitReg,
     cleanReg,
   }) {
     this.vocabulary = {};
@@ -31,7 +30,6 @@ class TextClassifier {
     this.trainingThreshold = trainingThreshold || 0.99; // +
     this.minProbability = minProbability || 0.05; // +
     this.modelizeConstant = modelizeConstant || 0.7; // +
-    this.splitReg = splitReg || /[,.!?]| |\n/;
     this.cleanReg = cleanReg || /[^a-z0-9\ ']+/gi;
   }
 
@@ -41,11 +39,13 @@ class TextClassifier {
    * @returns {Array}
    */
   _tokenizeMessage(msg) {
-    const arr = msg.split(this.splitReg).map((word) => {
-      const prepared = word.replace(this.cleanReg, "");
-      const index = this.plainVocabulary.indexOf(this.stemmer(prepared));
-      return index;
-    });
+    const arr = msg
+      .replace(this.cleanReg, " ")
+      .split(" ")
+      .map((word) => {
+        if (!word.length) return -1;
+        return this.plainVocabulary.indexOf(this.stemmer(word));
+      });
     return arr.filter((token) => token !== -1);
   }
 
@@ -101,10 +101,10 @@ class TextClassifier {
     let voc = [];
     dataset.forEach((row) => {
       try {
-        const arr = row.input.split(this.splitReg);
+        const arr = row.input.replace(this.cleanReg, " ").split(" ");
         if (!arr.length) return;
         arr.forEach((word) => {
-          word = this.stemmer(word.replace(this.cleanReg, ""));
+          word = this.stemmer(word);
           if (!word.length) return;
           if (!result[word]) result[word] = {};
           const obj = result[word] || {};
