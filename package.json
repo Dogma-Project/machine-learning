@@ -1,6 +1,6 @@
 {
   "name": "dogma-classifier",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Machine learning text classifier in js",
   "main": "index.js",
   "scripts": {
