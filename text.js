@@ -26,6 +26,9 @@ class TextClassifier {
     this.initValue = 0.5;
     this.modelAccuracy = 0;
     this.ready = false;
+    this._lastAccuracy = -1;
+    this._accuracyRepeats = 0;
+    this._accuracyRepeatsStopThreshold = 5;
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
     this.learningRate = learningRate || 0.03;
@@ -203,10 +206,20 @@ class TextClassifier {
       do {
         // oldAcc = acc;
         acc = this._train(dataset, iteration);
+        if (acc && this._lastAccuracy === acc) {
+          this._accuracyRepeats++;
+        } else {
+          this._accuracyRepeats = 0;
+        }
         console.log("LOG:", "Training accuracy:", acc);
+        this._lastAccuracy = acc;
         this.modelAccuracy = acc;
         iteration++;
-      } while (acc < this.trainingThreshold); // && acc !== oldAcc
+        console.log("Accuracy repeats", this._accuracyRepeats);
+      } while (
+        acc < this.trainingThreshold &&
+        this._accuracyRepeats < this._accuracyRepeatsStopThreshold
+      ); // && acc !== oldAcc
       this.ready = true;
       resolve({
         accuracy: acc,
