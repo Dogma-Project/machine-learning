@@ -77,7 +77,7 @@ class TextClassifier {
 
   _getValue(token) {
     const val = Object.values(this.voc).find((item) => item.id === token);
-    return val ? val[1] : -1;
+    return val ? val.value : -1;
   }
 
   _getDiff(a, b) {
