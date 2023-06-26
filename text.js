@@ -15,6 +15,7 @@ class TextClassifier {
     cleanReg,
   }) {
     this.voc = {};
+    this.vocValues = [];
     this.dlrCache = [];
     this.model = {};
     this.outputs = [];
@@ -76,8 +77,8 @@ class TextClassifier {
   }
 
   _getValue(token) {
-    const val = Object.values(this.voc).find((item) => item.id === token);
-    return val ? val.value : -1;
+    // const val = Object.values(this.voc).find((item) => item.id === token);
+    return this.vocValues[token] || -1;
   }
 
   _getDiff(a, b) {
@@ -143,6 +144,7 @@ class TextClassifier {
         maxId++;
         this.voc[k].id = maxId;
       }
+      this.vocValues[this.voc[k].id] = this.voc[k].value;
     }
 
     // set outputs
@@ -271,6 +273,9 @@ class TextClassifier {
     const file = await fs.readFile(path);
     const parsed = JSON.parse(file);
     this.voc = parsed.voc;
+    Object.values(this.voc).forEach((item) => {
+      this.vocValues[item.id] = item.value;
+    });
     this.model = parsed.model;
     this.outputs = parsed.outputs || [0, 1]; // edit
     this.initValue = 1 / this.outputs.length;
