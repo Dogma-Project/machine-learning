@@ -29,12 +29,12 @@ class TextClassifier {
     this._accuracyRepeats = 0;
     this._accuracyRepeatsStopThreshold = 10;
     this._learningAccuracy = 2;
-    this._learningAccuracyStep = 0.05;
+    this._learningAccuracyStep = 0.1;
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
-    this.learningRate = learningRate || 0.03;
-    this.trainingThreshold = trainingThreshold || 0.99;
-    this.minProbability = minProbability || 0.01;
+    this.learningRate = learningRate || 0.05;
+    this.trainingThreshold = trainingThreshold || 0.98;
+    this.minProbability = minProbability || 0.05;
     this.modelizeConstant = modelizeConstant || 0.7;
     // other
     String.prototype.prepare = function () {
@@ -182,12 +182,12 @@ class TextClassifier {
         Object.keys(value).forEach((key) => {
           key = Number(key);
           const sign = key !== entry.output ? -1 : 1;
+          value[key] =
+            value[key] + sign * value[key] * this.learningRate * Math.random();
           if (value[key] > 1 - this.minProbability)
             return (value[key] = 1 - this.minProbability);
           if (value[key] < this.minProbability)
             return (value[key] = this.minProbability);
-          value[key] =
-            value[key] + sign * value[key] * this.learningRate * Math.random();
         });
       });
     });
