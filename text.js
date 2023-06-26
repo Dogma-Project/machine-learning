@@ -33,10 +33,6 @@ class TextClassifier {
     this.modelizeConstant = modelizeConstant || 0.7; // +
     this.splitReg = splitReg || /[,.!?]| |\n/;
     this.cleanReg = cleanReg || /[^a-z0-9\ ']+/gi;
-    // other
-    String.prototype.prepare = function () {
-      return this.replace(this.cleanReg, "");
-    };
   }
 
   /**
@@ -46,7 +42,7 @@ class TextClassifier {
    */
   _tokenizeMessage(msg) {
     const arr = msg.split(this.splitReg).map((word) => {
-      const prepared = word.prepare();
+      const prepared = word.replace(this.cleanReg, "");
       const index = this.plainVocabulary.indexOf(this.stemmer(prepared));
       return index;
     });
@@ -108,7 +104,7 @@ class TextClassifier {
         const arr = row.input.split(this.splitReg);
         if (!arr.length) return;
         arr.forEach((word) => {
-          word = this.stemmer(word.prepare());
+          word = this.stemmer(word.replace(this.cleanReg, ""));
           if (!word.length) return;
           if (!result[word]) result[word] = {};
           const obj = result[word] || {};
