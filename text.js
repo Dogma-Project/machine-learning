@@ -25,6 +25,7 @@ class TextClassifier {
     this.outputs = [];
     this.initValue = 0.5;
     this.modelAccuracy = 0;
+    this.ready = false;
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
     this.learningRate = learningRate || 0.06;
@@ -201,6 +202,7 @@ class TextClassifier {
         this.modelAccuracy = acc;
         iteration++;
       } while (acc < this.trainingThreshold); // && acc !== oldAcc
+      this.ready = true;
       resolve({
         accuracy: acc,
         iterations: iteration,
@@ -245,6 +247,7 @@ class TextClassifier {
   }
 
   async loadModel(path) {
+    // edit
     const file = await fs.readFile(path);
     const parsed = JSON.parse(file);
     this.vocabulary = parsed.vocabulary;
@@ -252,6 +255,7 @@ class TextClassifier {
     this.plainVocabulary = this.vocabulary.map((row) => row[0]);
     this.outputs = parsed.outputs || [0, 1]; // edit
     this.initValue = 1 / this.outputs.length;
+    this.ready = true;
     console.log("LOG:", "Model successfully loaded!");
   }
 
