@@ -14,8 +14,7 @@ class TextClassifier {
     modelizeConstant,
     cleanReg,
   }) {
-    this.vocabulary = {};
-    this.plainVocabulary = [];
+    this.voc = {};
     this.dlrCache = [];
     this.model = {};
     this.outputs = [];
@@ -44,7 +43,9 @@ class TextClassifier {
       .split(" ")
       .map((word) => {
         if (!word.length) return -1;
-        return this.plainVocabulary.indexOf(this.stemmer(word));
+        return this.voc[this.stemmer(word)]
+          ? this.voc[this.stemmer(word)].id
+          : -1;
       });
     return arr.filter((token) => token !== -1);
   }
@@ -75,9 +76,7 @@ class TextClassifier {
   }
 
   _getValue(token) {
-    const val = this.vocabulary.find(
-      (item) => item[0] === this.plainVocabulary[token]
-    );
+    const val = Object.values(this.voc).find((item) => item.id === token);
     return val ? val[1] : -1;
   }
 
@@ -97,8 +96,11 @@ class TextClassifier {
   _makeVocabulary(dataset) {
     console.time("voc");
     console.log("LOG:", "Making vocabulary...");
-    const result = {};
-    let voc = [];
+
+    // let voc = []; // edit
+
+    // prepare and count new data
+    const temp = {};
     dataset.forEach((row) => {
       try {
         const arr = row.input.replace(this.cleanReg, " ").split(" ");
@@ -106,42 +108,49 @@ class TextClassifier {
         arr.forEach((word) => {
           word = this.stemmer(word);
           if (!word.length) return;
-          if (!result[word]) result[word] = {};
-          const obj = result[word] || {};
-          obj[row.output] = (obj[row.output] || 0) + 1;
+          if (!temp[word]) temp[word] = {};
+          const val = temp[word][row.output];
+          temp[word][row.output] = (val || 0) + 1;
         });
       } catch (err) {
         console.error(err);
       }
     });
-    const size = Object.keys(result).length;
-    for (let k of Object.keys(result)) {
-      const stats = result[k];
-      // const sum = Object.values(stats).reduce((p, a) => p + a, 0);
+
+    // add new entries to vocabulary
+    for (let k of Object.keys(temp)) {
+      if (!this.voc[k]) this.voc[k] = { stats: temp[k] };
+    }
+    // get new size
+    const size = Object.keys(this.voc).length;
+
+    let maxId = -1;
+    for (let k of Object.keys(this.voc)) {
+      if (this.voc[k].id > maxId) maxId = this.voc[k].id;
+      const stats = this.voc[k].stats;
       const max = [-1, 0];
       for (let i of Object.keys(stats)) {
-        // edit
         if (stats[i] > max[1]) {
           max[0] = i;
           max[1] = stats[i];
         }
       }
-      const entry = [k, max[1] / size + Number(max[0])];
-      voc.push(entry);
+      this.voc[k].output = Number(max[0]);
+      this.voc[k].value = max[1] / size + this.voc[k].output;
     }
-    this.vocabulary = voc.sort((a, b) => a[1] - b[1]);
-    this.plainVocabulary = voc.map((row) => row[0]);
+    for (let k of Object.keys(this.voc)) {
+      if (this.voc[k].id === undefined) {
+        maxId++;
+        this.voc[k].id = maxId;
+      }
+    }
 
     // set outputs
     const outputs = new Set();
     dataset.forEach((entry) => outputs.add(entry.output));
     this.outputs = [...outputs];
     this.initValue = 1 / this.outputs.length;
-    console.log(
-      "LOG:",
-      "Vocabulary is ready. Current size:",
-      this.plainVocabulary.length
-    );
+    console.log("LOG:", "Vocabulary is ready. Current size:", size);
     console.timeEnd("voc");
   }
 
@@ -149,7 +158,7 @@ class TextClassifier {
 
   _train(dataset, iteration = 0) {
     console.time("train");
-    this._makeVocabulary(dataset);
+    this._makeVocabulary(dataset); // edit
     console.log("LOG:", "Training model. Iteration:", iteration);
     const accuracy = [0, 0]; // [exact,total]
     dataset.forEach((entry) => {
@@ -261,9 +270,8 @@ class TextClassifier {
     // edit
     const file = await fs.readFile(path);
     const parsed = JSON.parse(file);
-    this.vocabulary = parsed.vocabulary;
+    this.voc = parsed.voc;
     this.model = parsed.model;
-    this.plainVocabulary = this.vocabulary.map((row) => row[0]);
     this.outputs = parsed.outputs || [0, 1]; // edit
     this.initValue = 1 / this.outputs.length;
     this.ready = true;
@@ -275,7 +283,7 @@ class TextClassifier {
       path,
       JSON.stringify({
         model: this.model,
-        vocabulary: this.vocabulary,
+        voc: this.voc,
         outputs: this.outputs,
         accuracy: this.modelAccuracy,
       })
