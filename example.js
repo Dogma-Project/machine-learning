@@ -6,14 +6,15 @@ async function run() {
     { input: "Hi there!", output: 0 },
     { input: "Hello my friend!", output: 0 },
     { input: "Hey, hi", output: 0 },
-    { input: "Bye!", output: 1 },
+    { input: "Bye bye!", output: 1 },
     { input: "See you later!", output: 1 },
-    { input: "Goodbye!", output: 1 },
+    { input: "Goodbye dude!", output: 1 },
     { input: "Good bye", output: 1 },
   ];
   const classifier = new TextClassifier({
-    learningAccuracy: 1.2,
-    trainingThreshold: 0.95,
+    learningAccuracy: 2,
+    trainingThreshold: 0.998,
+    learningRate: 0.03,
   });
   const path = "./data/model.json";
   classifier

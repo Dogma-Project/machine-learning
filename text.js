@@ -145,6 +145,8 @@ class TextClassifier {
     console.timeEnd("voc");
   }
 
+  _modelize() {}
+
   _train(dataset, iteration = 0) {
     console.time("train");
     this._makeVocabulary(dataset); // ok
@@ -155,33 +157,28 @@ class TextClassifier {
       const result = this.predict(entry.input); // ok
       const predicted = result.output === entry.output;
       accuracy[1]++;
-      if (predicted && result.delta >= this.learningAccuracy) {
-        accuracy[0]++;
-        return;
-      } else {
-        const tokenized = this._tokenizeMessage(entry.input); // ok
-        const layerized = this._layerize(tokenized); // ok
-        layerized.forEach((token) => {
-          if (!this.model[token]) {
-            this.model[token] = {};
-            this.outputs.forEach((output) => {
-              this.model[token][output] = this.initValue;
-            });
-          }
-          const value = this.model[token];
-          Object.keys(value).forEach((key) => {
-            key = Number(key);
-            const sign = key !== entry.output ? -1 : 1;
-            if (value[key] > 1 - this.minProbability)
-              return (value[key] = 1 - this.minProbability);
-            if (value[key] < this.minProbability)
-              return (value[key] = this.minProbability);
-            value[key] =
-              value[key] +
-              sign * value[key] * this.learningRate * Math.random();
+      if (predicted && result.delta >= this.learningAccuracy) accuracy[0]++;
+      const tokenized = this._tokenizeMessage(entry.input); // ok
+      const layerized = this._layerize(tokenized); // ok
+      layerized.forEach((token) => {
+        if (!this.model[token]) {
+          this.model[token] = {};
+          this.outputs.forEach((output) => {
+            this.model[token][output] = this.initValue;
           });
+        }
+        const value = this.model[token];
+        Object.keys(value).forEach((key) => {
+          key = Number(key);
+          const sign = key !== entry.output ? -1 : 1;
+          if (value[key] > 1 - this.minProbability)
+            return (value[key] = 1 - this.minProbability);
+          if (value[key] < this.minProbability)
+            return (value[key] = this.minProbability);
+          value[key] =
+            value[key] + sign * value[key] * this.learningRate * Math.random();
         });
-      }
+      });
     });
     console.timeEnd("train");
     return accuracy[0] / accuracy[1];
@@ -198,12 +195,12 @@ class TextClassifier {
         acc = 0,
         oldAcc = 0;
       do {
-        oldAcc = acc;
+        // oldAcc = acc;
         acc = this._train(dataset, iteration);
         console.log("LOG:", "Training accuracy:", acc);
         this.modelAccuracy = acc;
         iteration++;
-      } while (acc < this.trainingThreshold && acc !== oldAcc);
+      } while (acc < this.trainingThreshold); // && acc !== oldAcc
       resolve({
         accuracy: acc,
         iterations: iteration,
