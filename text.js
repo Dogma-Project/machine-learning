@@ -219,9 +219,9 @@ class TextClassifier {
         console.log("LOG:", "Accuracy repeats", this._accuracyRepeats);
         console.log("LOG:", "Learning accuracy", this._learningAccuracy);
         if (this._learningAccuracy > 1 + this._learningAccuracyStep) {
-          if (this._lastAccuracy <= acc) {
+          if (this._lastAccuracy < acc) {
             this._learningAccuracy += this._learningAccuracyStep;
-          } else {
+          } else if (this._lastAccuracy > acc) {
             this._learningAccuracy -= this._learningAccuracyStep;
           }
         }
