@@ -16,7 +16,7 @@ class TextClassifier {
   }) {
     this.voc = {};
     this.vocValues = [];
-    this.dlrCache = [];
+    this.dlrCache = {};
     this.model = {};
     this.outputs = [];
     this.initValue = 0.5;
@@ -35,6 +35,15 @@ class TextClassifier {
 
   /**
    *
+   * @param {String} input
+   * @returns {String}
+   */
+  _pseudoStemmer(input) {
+    return input.toLowerCase();
+  }
+
+  /**
+   *
    * @param {String} msg
    * @returns {Array}
    */
@@ -46,18 +55,9 @@ class TextClassifier {
         if (!word.length) return -1;
         return this.voc[this.stemmer(word)]
           ? this.voc[this.stemmer(word)].id
-          : -1;
+          : 0;
       });
     return arr.filter((token) => token !== -1);
-  }
-
-  /**
-   *
-   * @param {String} input
-   * @returns {String}
-   */
-  _pseudoStemmer(input) {
-    return input.toLowerCase();
   }
 
   /**
@@ -68,12 +68,12 @@ class TextClassifier {
   _layerize(tokenized) {
     tokenized = tokenized.map((word, i, arr) => {
       if (i < tokenized.length - 1) {
-        const val = Number(word.toString() + arr[i + 1].toString());
+        const val = `${word}:${arr[i + 1]}`;
         this.dlrCache[val] = [word, arr[i + 1]];
         return val;
       }
     });
-    return tokenized.filter((j) => j !== undefined); // check
+    return tokenized.filter((j) => j !== undefined);
   }
 
   _getValue(token) {
@@ -97,8 +97,6 @@ class TextClassifier {
   _makeVocabulary(dataset) {
     console.time("voc");
     console.log("LOG:", "Making vocabulary...");
-
-    // let voc = []; // edit
 
     // prepare and count new data
     const temp = {};
@@ -125,7 +123,15 @@ class TextClassifier {
     // get new size
     const size = Object.keys(this.voc).length;
 
-    let maxId = -1;
+    // get size by outputs
+    const sizes = {};
+    Object.values(this.voc).forEach((item) => {
+      const { stats } = item;
+      for (let k in stats) {
+        sizes[k] = (sizes[k] || 0) + Number(stats[k]);
+      }
+    });
+    let maxId = 0;
     for (let k of Object.keys(this.voc)) {
       if (this.voc[k].id > maxId) maxId = this.voc[k].id;
       const stats = this.voc[k].stats;
@@ -137,8 +143,10 @@ class TextClassifier {
         }
       }
       this.voc[k].output = Number(max[0]);
-      this.voc[k].value = max[1] / size + this.voc[k].output;
+      this.voc[k].value = max[1] / sizes[max[0]] + this.voc[k].output;
     }
+
+    // add new ids
     for (let k of Object.keys(this.voc)) {
       if (this.voc[k].id === undefined) {
         maxId++;
@@ -152,6 +160,7 @@ class TextClassifier {
     dataset.forEach((entry) => outputs.add(entry.output));
     this.outputs = [...outputs];
     this.initValue = 1 / this.outputs.length;
+
     console.log("LOG:", "Vocabulary is ready. Current size:", size);
     console.timeEnd("voc");
   }
@@ -167,7 +176,7 @@ class TextClassifier {
       const tokenized = this._tokenizeMessage(entry.input);
       if (tokenized.length < 2) return;
       entry.output = Number(entry.output);
-      const result = this.predict(entry.input);
+      const result = this.predict(entry.input, true);
       const predicted = result.output === entry.output;
       accuracy[1]++;
       if (predicted) accuracy[0]++;
@@ -183,8 +192,10 @@ class TextClassifier {
         Object.keys(value).forEach((key) => {
           key = Number(key);
           const sign = key !== entry.output ? -1 : 1;
-          const addition = sign * this.learningRate * Math.random(); // check
-          value[key] += addition;
+          const addition = sign * this.learningRate * Math.random();
+          if ((predicted && sign === 1) || (!predicted && sign === -1)) {
+            value[key] += addition;
+          }
           if (value[key] > 1 - this.minProbability)
             return (value[key] = 1 - this.minProbability);
           if (value[key] < this.minProbability)
@@ -231,7 +242,7 @@ class TextClassifier {
     });
   }
 
-  predict(message) {
+  predict(message, auto = false) {
     const response = {
       output: -1,
       max: 0,

@@ -1,1 +1,5 @@
 data/*
+temp.js
+temp/
+node_modules
+package-lock.json

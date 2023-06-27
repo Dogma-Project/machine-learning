@@ -1,6 +1,6 @@
 {
   "name": "dogma-classifier",
-  "version": "0.1.25",
+  "version": "0.2.1",
   "description": "Machine learning text classifier in js",
   "main": "index.js",
   "scripts": {
@@ -14,5 +14,9 @@
     "classifier"
   ],
   "author": "rotegott",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@seald-io/nedb": "^4.0.2",
+    "porter-stemmer-ukrainian": "^0.5.1"
+  }
 }
