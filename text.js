@@ -6,14 +6,7 @@ class TextClassifier {
    * @param {Object} params
    * @param {Function} params.stemmer
    */
-  constructor({
-    stemmer,
-    learningRate,
-    trainingThreshold,
-    minProbability,
-    modelizeConstant,
-    cleanReg,
-  }) {
+  constructor({ stemmer, trainingThreshold, modelizeConstant, cleanReg }) {
     this.voc = {};
     this.vocValues = [];
     this.dlrCache = {};
@@ -26,10 +19,8 @@ class TextClassifier {
     this._accuracyRepeatsStopThreshold = 10;
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
-    this.learningRate = learningRate || 0.06; // +
-    this.trainingThreshold = trainingThreshold || 0.99; // +
-    this.minProbability = minProbability || 0.05; // +
-    this.modelizeConstant = modelizeConstant || 0.7; // +
+    this.trainingThreshold = trainingThreshold || 0.99;
+    this.modelizeConstant = modelizeConstant || 0.7;
     this.cleanReg = cleanReg || /[^a-z0-9\ ']+/gi;
   }
 
@@ -177,6 +168,7 @@ class TextClassifier {
       if (tokenized.length < 2) return;
       entry.output = Number(entry.output);
       const result = this.predict(entry.input, true);
+      // console.log("RES", result);
       const predicted = result.output === entry.output;
       accuracy[1]++;
       if (predicted) accuracy[0]++;
@@ -185,21 +177,18 @@ class TextClassifier {
         if (!this.model[token]) {
           this.model[token] = {};
           this.outputs.forEach((output) => {
-            this.model[token][output] = this.initValue;
+            const dlr = this.dlrCache[token];
+            const modelize = this._getDiff(dlr[0], dlr[1]);
+            this.model[token][output] = Number(modelize === output);
           });
         }
         const value = this.model[token];
         Object.keys(value).forEach((key) => {
           key = Number(key);
-          const sign = key !== entry.output ? -1 : 1;
-          const addition = sign * this.learningRate * Math.random();
-          if ((predicted && sign === 1) || (!predicted && sign === -1)) {
-            value[key] += addition;
-          }
-          if (value[key] > 1 - this.minProbability)
-            return (value[key] = 1 - this.minProbability);
-          if (value[key] < this.minProbability)
-            return (value[key] = this.minProbability);
+          const sign = key === entry.output ? 1 : 0;
+          const multiplier = predicted ? 1 : 5;
+          value[key] += sign * multiplier * Math.random();
+          if (value[key] < 0) value[key] = 0;
         });
       });
     });
@@ -227,7 +216,7 @@ class TextClassifier {
           "LOG:",
           `Training accuracy: ${acc}. Duplication: ${this._accuracyRepeats}.`
         );
-        this.modelAccuracy = acc;
+        this._modelAccuracy = acc;
         iteration++;
 
         cond1 = acc < this.trainingThreshold;
@@ -249,7 +238,7 @@ class TextClassifier {
       result: [],
     };
     const model = this.model;
-    if (!model[Object.keys(model)[0]]) return response;
+    if (!model[Object.keys(model)[0]]) return response; // check
     const tokenized = this._tokenizeMessage(message);
     if (tokenized.length < 2) return response;
     const layerized = this._layerize(tokenized);
@@ -261,14 +250,19 @@ class TextClassifier {
         const values = model[token];
         total++;
         if (values) {
-          q += values[i];
+          const sum = Object.values(values).reduce(
+            (partialSum, a) => partialSum + a,
+            0
+          );
+          // console.log(values[i] / sum);
+          q += values[i] / sum;
         } else {
           const dlr = this.dlrCache[token];
           const modelize = this._getDiff(dlr[0], dlr[1]);
           q += modelize === i ? this.modelizeConstant : 0;
         }
       });
-      result[i] = q / total;
+      result[i] = q / total; //
     }
     const max = Math.max(...result);
     return {
@@ -280,18 +274,21 @@ class TextClassifier {
   }
 
   async loadModel(path) {
-    // edit
-    const file = await fs.readFile(path);
-    const parsed = JSON.parse(file);
-    this.voc = parsed.voc;
-    Object.values(this.voc).forEach((item) => {
-      this.vocValues[item.id] = item.value;
-    });
-    this.model = parsed.model;
-    this.outputs = parsed.outputs || [0, 1]; // edit
-    this.initValue = 1 / this.outputs.length;
-    this.ready = true;
-    console.log("LOG:", "Model successfully loaded!");
+    try {
+      const file = await fs.readFile(path);
+      const parsed = JSON.parse(file);
+      this.voc = parsed.voc;
+      Object.values(this.voc).forEach((item) => {
+        this.vocValues[item.id] = item.value;
+      });
+      this.model = parsed.model;
+      this.outputs = parsed.outputs || [0, 1]; // edit
+      this.initValue = 1 / this.outputs.length;
+      this.ready = true;
+      console.log("LOG:", "Model successfully loaded!");
+    } catch (err) {
+      return err;
+    }
   }
 
   async saveModel(path) {
@@ -301,7 +298,7 @@ class TextClassifier {
         model: this.model,
         voc: this.voc,
         outputs: this.outputs,
-        accuracy: this.modelAccuracy,
+        accuracy: this._modelAccuracy,
       })
     );
   }
