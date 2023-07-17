@@ -74,8 +74,13 @@ class TextClassifier {
 
   _getDiff(a, b) {
     const valA = this._getValue(a);
-    const splitA = [Math.trunc(valA), valA - Math.trunc(valA)];
     const valB = this._getValue(b);
+    if (valA === -1 || valB === -1) {
+      if (valA !== -1 && valB === -1) return Math.trunc(valA);
+      if (valA === -1 && valB !== -1) return Math.trunc(valB);
+      return -1;
+    }
+    const splitA = [Math.trunc(valA), valA - Math.trunc(valA)];
     const splitB = [Math.trunc(valB), valB - Math.trunc(valB)];
     return splitA[1] > splitB[1] ? splitA[0] : splitB[0];
   }
@@ -179,9 +184,12 @@ class TextClassifier {
           this.outputs.forEach((output) => {
             const dlr = this.dlrCache[token];
             const modelize = this._getDiff(dlr[0], dlr[1]);
-            this.model[token][output] = Number(modelize === output);
+            // this.model[token][output] = Number(modelize === output);
+            this.model[token][output] =
+              modelize === output ? this.modelizeConstant : 0;
           });
         }
+        // console.log(this.model[token]);
         const value = this.model[token];
         Object.keys(value).forEach((key) => {
           key = Number(key);
@@ -248,21 +256,25 @@ class TextClassifier {
         total = 0;
       layerized.forEach((token) => {
         const values = model[token];
-        total++;
+        let addition = 0;
         if (values) {
+          // console.log("vales", values);
           const sum = Object.values(values).reduce(
             (partialSum, a) => partialSum + a,
             0
           );
+          if (!sum) console.log("sum", sum);
           // console.log(values[i] / sum);
-          q += values[i] / sum;
+          addition = values[i] / sum;
         } else {
           const dlr = this.dlrCache[token];
           const modelize = this._getDiff(dlr[0], dlr[1]);
-          q += modelize === i ? this.modelizeConstant : 0;
+          addition = modelize === i ? this.modelizeConstant : 0;
         }
+        q += addition;
+        if (addition) total++;
       });
-      result[i] = q / total; //
+      result[i] = q / total || 0; //
     }
     const max = Math.max(...result);
     return {
