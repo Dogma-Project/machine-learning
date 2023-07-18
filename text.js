@@ -17,6 +17,7 @@ class TextClassifier {
     this._modelAccuracy = -1;
     this._accuracyRepeats = 0;
     this._accuracyRepeatsStopThreshold = 10;
+    this._diffCache = {};
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
     this.trainingThreshold = trainingThreshold || 0.99;
@@ -73,6 +74,8 @@ class TextClassifier {
   }
 
   _getDiff(a, b) {
+    const key = a + ":" + b;
+    if (this._diffCache[key]) return this._diffCache[key];
     const valA = this._getValue(a);
     const valB = this._getValue(b);
     if (valA === -1 || valB === -1) {
@@ -82,7 +85,9 @@ class TextClassifier {
     }
     const splitA = [Math.trunc(valA), valA - Math.trunc(valA)];
     const splitB = [Math.trunc(valB), valB - Math.trunc(valB)];
-    return splitA[1] > splitB[1] ? splitA[0] : splitB[0];
+    const result = splitA[1] > splitB[1] ? splitA[0] : splitB[0];
+    this._diffCache[key] = result;
+    return result;
   }
 
   /**
@@ -154,6 +159,7 @@ class TextClassifier {
     // set outputs
     const outputs = new Set();
     dataset.forEach((entry) => outputs.add(entry.output));
+    this.outputs.forEach((entry) => outputs.add(entry));
     this.outputs = [...outputs];
     this.initValue = 1 / this.outputs.length;
 
@@ -206,7 +212,7 @@ class TextClassifier {
 
   /**
    *
-   * @param {Object} dataset
+   * @param {Array} dataset
    */
   train(dataset) {
     return new Promise((resolve, _reject) => {
@@ -215,7 +221,7 @@ class TextClassifier {
       let cond1, cond2, cond3;
       do {
         const acc = this._train(dataset, iteration);
-        if (acc && this._modelAccuracy === acc) {
+        if (this._modelAccuracy === acc) {
           this._accuracyRepeats++;
         } else {
           this._accuracyRepeats = 0;
@@ -276,12 +282,15 @@ class TextClassifier {
       });
       result[i] = q / total || 0; //
     }
-    const max = Math.max(...result);
+    const orig = [...result];
+    result.sort((a, b) => b - a);
+    const max = result[0];
     return {
       max,
-      output: result.indexOf(max),
+      output: orig.indexOf(max),
       result,
-      delta: Math.max(...result) / Math.min(...result),
+      beta: result[0] / result[1],
+      delta: result[0] / result[result.length - 1],
     };
   }
 
@@ -297,7 +306,13 @@ class TextClassifier {
       this.outputs = parsed.outputs || [0, 1]; // edit
       this.initValue = 1 / this.outputs.length;
       this.ready = true;
-      console.log("LOG:", "Model successfully loaded!");
+      console.log(
+        "LOG:",
+        "Model successfully loaded!",
+        `Voc size: ${Object.keys(this.voc).length}`,
+        `Model size: ${Object.keys(this.model).length}`,
+        `Outputs: ${this.outputs.length}`
+      );
     } catch (err) {
       return err;
     }
