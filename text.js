@@ -288,7 +288,7 @@ class TextClassifier {
     return {
       max,
       output: orig.indexOf(max),
-      result,
+      result: orig,
       beta: result[0] / result[1],
       delta: result[0] / result[result.length - 1],
     };
