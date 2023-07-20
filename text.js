@@ -99,7 +99,6 @@ class TextClassifier {
     }
 
     const res = { result, weight };
-    // console.log("RES", res, this._maxWeight);
     this._diffCache[key] = res;
     return res;
   }
@@ -169,7 +168,6 @@ class TextClassifier {
         this.voc[k].value = -1;
       }
     }
-    // @add max alpha
 
     // add new ids
     for (let k of Object.keys(this.voc)) {
@@ -267,11 +265,11 @@ class TextClassifier {
         this._modelAccuracy = acc;
         iteration++;
       } while (cond1 && cond2 && cond3 && cond4);
-      console.log("Not predicted:", this.notPredicted);
       this.ready = true;
       resolve({
         accuracy: acc,
         iterations: iteration,
+        notPredicted: this.notPredicted,
       });
     });
   }
@@ -295,19 +293,14 @@ class TextClassifier {
         const values = model[token];
         let addition = 0;
         if (values) {
-          const sum = Object.values(values).reduce(
-            (partialSum, a) => partialSum + a,
-            0
-          );
+          const sum = Object.values(values).reduce((p, a) => p + a, 0);
           if (!sum) console.log("sum", sum);
-          // console.log(values[i] / sum);
           addition = values[i] / sum;
         } else {
           const dlr = this.dlrCache[token];
           const modelize = this._getDiff(dlr[0], dlr[1]);
           addition =
             modelize.result === i ? modelize.weight / this._maxWeight : 0;
-          // console.log("ADDITION", addition);
         }
         q += addition;
         if (addition) total++;

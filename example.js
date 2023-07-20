@@ -18,6 +18,7 @@ async function run() {
   classifier
     .train(dataset)
     .then((_res) => {
+      console.log("NOT PREDICTED:", _res.notPredicted);
       return classifier.saveModel(path);
     })
     .then(() => {
