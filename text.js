@@ -18,6 +18,8 @@ class TextClassifier {
     this._accuracyRepeats = 0;
     this._accuracyRepeatsStopThreshold = 10;
     this._diffCache = {};
+    this._maxWeight = 1;
+    this.notPredicted = [];
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
     this.trainingThreshold = trainingThreshold || 0.99;
@@ -68,26 +70,38 @@ class TextClassifier {
     return tokenized.filter((j) => j !== undefined);
   }
 
-  _getValue(token) {
-    // const val = Object.values(this.voc).find((item) => item.id === token);
-    return this.vocValues[token] || -1;
-  }
-
   _getDiff(a, b) {
     const key = a + ":" + b;
     if (this._diffCache[key]) return this._diffCache[key];
-    const valA = this._getValue(a);
-    const valB = this._getValue(b);
-    if (valA === -1 || valB === -1) {
-      if (valA !== -1 && valB === -1) return Math.trunc(valA);
-      if (valA === -1 && valB !== -1) return Math.trunc(valB);
-      return -1;
+    const valA = this.vocValues[a];
+    const valB = this.vocValues[b];
+
+    let result = -1;
+    let weight = 0;
+
+    if (valA && valB) {
+      if (valA.output === valB.output) {
+        result = valA.output;
+        weight = valA.value + valB.value;
+      } else if (valA.value > valB.value) {
+        result = valA.output;
+        weight = valA.value - valB.value;
+      } else {
+        result = valB.output;
+        weight = valB.value - valA.value;
+      }
+    } else if (valA) {
+      result = valA.output;
+      weight = valA.value;
+    } else if (valB) {
+      result = valB.output;
+      weight = valB.value;
     }
-    const splitA = [Math.trunc(valA), valA - Math.trunc(valA)];
-    const splitB = [Math.trunc(valB), valB - Math.trunc(valB)];
-    const result = splitA[1] > splitB[1] ? splitA[0] : splitB[0];
-    this._diffCache[key] = result;
-    return result;
+
+    const res = { result, weight };
+    // console.log("RES", res, this._maxWeight);
+    this._diffCache[key] = res;
+    return res;
   }
 
   /**
@@ -121,6 +135,7 @@ class TextClassifier {
     for (let k of Object.keys(temp)) {
       if (!this.voc[k]) this.voc[k] = { stats: temp[k] };
     }
+
     // get new size
     const size = Object.keys(this.voc).length;
 
@@ -132,20 +147,29 @@ class TextClassifier {
         sizes[k] = (sizes[k] || 0) + Number(stats[k]);
       }
     });
+
     let maxId = 0;
     for (let k of Object.keys(this.voc)) {
       if (this.voc[k].id > maxId) maxId = this.voc[k].id;
       const stats = this.voc[k].stats;
-      const max = [-1, 0];
-      for (let i of Object.keys(stats)) {
-        if (stats[i] > max[1]) {
-          max[0] = i;
-          max[1] = stats[i];
-        }
+      let values = Object.entries(stats);
+      values = values.map((item) => {
+        item[1] = item[1] / sizes[item[0]];
+        return item;
+      });
+      values.sort((a, b) => b[1] - a[1]);
+      const alpha = values[0];
+      const beta = values[1];
+      this.voc[k].output = Number(alpha[0]);
+      if (beta) {
+        const weight = alpha[1] / beta[1];
+        this.voc[k].value = weight;
+        if (weight > this._maxWeight) this._maxWeight = weight;
+      } else {
+        this.voc[k].value = -1;
       }
-      this.voc[k].output = Number(max[0]);
-      this.voc[k].value = max[1] / sizes[max[0]] + this.voc[k].output;
     }
+    // @add max alpha
 
     // add new ids
     for (let k of Object.keys(this.voc)) {
@@ -153,7 +177,8 @@ class TextClassifier {
         maxId++;
         this.voc[k].id = maxId;
       }
-      this.vocValues[this.voc[k].id] = this.voc[k].value;
+      this.vocValues[this.voc[k].id] = this.voc[k];
+      if (this.voc[k].value === -1) this.voc[k].value = this._maxWeight;
     }
 
     // set outputs
@@ -174,15 +199,19 @@ class TextClassifier {
     this._makeVocabulary(dataset); // edit
     console.log("LOG:", "Training model. Iteration:", iteration);
     const accuracy = [0, 0]; // [exact,total]
+    this.notPredicted = [];
     dataset.forEach((entry) => {
       const tokenized = this._tokenizeMessage(entry.input);
       if (tokenized.length < 2) return;
       entry.output = Number(entry.output);
       const result = this.predict(entry.input, true);
-      // console.log("RES", result);
       const predicted = result.output === entry.output;
       accuracy[1]++;
-      if (predicted) accuracy[0]++;
+      if (predicted) {
+        accuracy[0]++;
+      } else {
+        this.notPredicted.push(entry);
+      }
       const layerized = this._layerize(tokenized);
       layerized.forEach((token) => {
         if (!this.model[token]) {
@@ -190,9 +219,10 @@ class TextClassifier {
           this.outputs.forEach((output) => {
             const dlr = this.dlrCache[token];
             const modelize = this._getDiff(dlr[0], dlr[1]);
-            // this.model[token][output] = Number(modelize === output);
             this.model[token][output] =
-              modelize === output ? this.modelizeConstant : 0;
+              modelize.result === output
+                ? modelize.weight / this._maxWeight
+                : 0;
           });
         }
         // console.log(this.model[token]);
@@ -218,7 +248,7 @@ class TextClassifier {
     return new Promise((resolve, _reject) => {
       let iteration = 0;
       let acc = 0;
-      let cond1, cond2, cond3;
+      let cond1, cond2, cond3, cond4;
       do {
         const acc = this._train(dataset, iteration);
         if (this._modelAccuracy === acc) {
@@ -230,13 +260,14 @@ class TextClassifier {
           "LOG:",
           `Training accuracy: ${acc}. Duplication: ${this._accuracyRepeats}.`
         );
-        this._modelAccuracy = acc;
-        iteration++;
-
         cond1 = acc < this.trainingThreshold;
         cond2 = this._accuracyRepeats < this._accuracyRepeatsStopThreshold;
         cond3 = acc !== 1;
-      } while (cond1 && cond2 && cond3);
+        cond4 = this._modelAccuracy < acc;
+        this._modelAccuracy = acc;
+        iteration++;
+      } while (cond1 && cond2 && cond3 && cond4);
+      console.log("Not predicted:", this.notPredicted);
       this.ready = true;
       resolve({
         accuracy: acc,
@@ -264,7 +295,6 @@ class TextClassifier {
         const values = model[token];
         let addition = 0;
         if (values) {
-          // console.log("vales", values);
           const sum = Object.values(values).reduce(
             (partialSum, a) => partialSum + a,
             0
@@ -275,7 +305,9 @@ class TextClassifier {
         } else {
           const dlr = this.dlrCache[token];
           const modelize = this._getDiff(dlr[0], dlr[1]);
-          addition = modelize === i ? this.modelizeConstant : 0;
+          addition =
+            modelize.result === i ? modelize.weight / this._maxWeight : 0;
+          // console.log("ADDITION", addition);
         }
         q += addition;
         if (addition) total++;
@@ -300,7 +332,7 @@ class TextClassifier {
       const parsed = JSON.parse(file);
       this.voc = parsed.voc;
       Object.values(this.voc).forEach((item) => {
-        this.vocValues[item.id] = item.value;
+        this.vocValues[item.id] = item;
       });
       this.model = parsed.model;
       this.outputs = parsed.outputs || [0, 1]; // edit
