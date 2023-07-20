@@ -303,7 +303,7 @@ class TextClassifier {
             modelize.result === i ? modelize.weight / this._maxWeight : 0;
         }
         q += addition;
-        if (addition) total++;
+        total++; // if (addition)
       });
       result[i] = q / total || 0; //
     }
