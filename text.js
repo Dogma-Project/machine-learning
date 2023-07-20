@@ -163,7 +163,6 @@ class TextClassifier {
       if (beta) {
         const weight = alpha[1] / beta[1];
         this.voc[k].value = weight;
-        if (weight > this._maxWeight) this._maxWeight = weight;
       } else {
         this.voc[k].value = -1;
       }
@@ -176,6 +175,18 @@ class TextClassifier {
         this.voc[k].id = maxId;
       }
       this.vocValues[this.voc[k].id] = this.voc[k];
+    }
+
+    // get median max weight
+    let weights = Object.values(this.voc).map((item) => {
+      return item.value;
+    });
+    weights.sort((a, b) => b - a);
+    weights.splice(Math.ceil(weights.length * 0.03)); // edit
+    this._maxWeight = weights.reduce((p, a) => p + a, 0) / weights.length;
+    // console.log("MEDIAN", this._maxWeight);
+
+    for (let k of Object.keys(this.voc)) {
       if (this.voc[k].value === -1) this.voc[k].value = this._maxWeight;
     }
 
@@ -303,9 +314,9 @@ class TextClassifier {
             modelize.result === i ? modelize.weight / this._maxWeight : 0;
         }
         q += addition;
-        total++; // if (addition)
+        total++;
       });
-      result[i] = q / total || 0; //
+      result[i] = q / total || 0;
     }
     const orig = [...result];
     result.sort((a, b) => b - a);
