@@ -82,7 +82,7 @@ class TextClassifier {
     if (valA && valB) {
       if (valA.output === valB.output) {
         result = valA.output;
-        weight = valA.value + valB.value;
+        weight = valA.value; // valA.value + valB.value
       } else if (valA.value > valB.value) {
         result = valA.output;
         weight = valA.value - valB.value;
@@ -182,7 +182,7 @@ class TextClassifier {
       return item.value;
     });
     weights.sort((a, b) => b - a);
-    weights.splice(Math.ceil(weights.length * 0.03)); // edit
+    weights.splice(Math.ceil(weights.length * 0.05)); // edit
     this._maxWeight = weights.reduce((p, a) => p + a, 0) / weights.length;
     // console.log("MEDIAN", this._maxWeight);
 
@@ -228,10 +228,11 @@ class TextClassifier {
           this.outputs.forEach((output) => {
             const dlr = this.dlrCache[token];
             const modelize = this._getDiff(dlr[0], dlr[1]);
-            this.model[token][output] =
+            const mr =
               modelize.result === output
                 ? modelize.weight / this._maxWeight
                 : 0;
+            this.model[token][output] = mr > 1 ? 1 : mr;
           });
         }
         // console.log(this.model[token]);
@@ -310,8 +311,8 @@ class TextClassifier {
         } else {
           const dlr = this.dlrCache[token];
           const modelize = this._getDiff(dlr[0], dlr[1]);
-          addition =
-            modelize.result === i ? modelize.weight / this._maxWeight : 0;
+          const mr = modelize.weight / this._maxWeight;
+          addition = modelize.result === i ? (mr > 1 ? 1 : 1) : 0;
         }
         q += addition;
         total++;
