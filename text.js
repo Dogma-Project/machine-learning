@@ -6,7 +6,13 @@ class TextClassifier {
    * @param {Object} params
    * @param {Function} params.stemmer
    */
-  constructor({ stemmer, trainingThreshold, modelizeConstant, cleanReg }) {
+  constructor({
+    stemmer,
+    trainingThreshold,
+    modelizeConstant,
+    cleanReg,
+    median,
+  }) {
     this.voc = {};
     this.vocValues = [];
     this.dlrCache = {};
@@ -19,12 +25,19 @@ class TextClassifier {
     this._accuracyRepeatsStopThreshold = 10;
     this._diffCache = {};
     this._maxWeight = 1;
+    this._thresholds = {
+      valueThreshold: null,
+      betasThreshold: null,
+    };
     this.notPredicted = [];
+    this.predictedValues = [];
+    this.predictedBetas = [];
     // configs
     this.stemmer = stemmer || this._pseudoStemmer;
     this.trainingThreshold = trainingThreshold || 0.99;
     this.modelizeConstant = modelizeConstant || 0.7;
     this.cleanReg = cleanReg || /[^a-z0-9\ ']+/gi;
+    this.median = median || 0.05;
   }
 
   /**
@@ -105,6 +118,23 @@ class TextClassifier {
 
   /**
    *
+   * @param {Array} values
+   * @param {Number} q
+   * @param {Boolean} max default:true
+   * @returns
+   */
+  _getMedian(values, q, max = true) {
+    if (max) {
+      values.sort((a, b) => b - a);
+    } else {
+      values.sort();
+    }
+    values.splice(Math.ceil(values.length * q));
+    return values.reduce((p, a) => p + a, 0) / values.length;
+  }
+
+  /**
+   *
    * @param {Array} data {input, output}
    *
    */
@@ -181,10 +211,8 @@ class TextClassifier {
     let weights = Object.values(this.voc).map((item) => {
       return item.value;
     });
-    weights.sort((a, b) => b - a);
-    weights.splice(Math.ceil(weights.length * 0.05)); // edit
-    this._maxWeight = weights.reduce((p, a) => p + a, 0) / weights.length;
-    // console.log("MEDIAN", this._maxWeight);
+
+    this._maxWeight = this._getMedian(weights, this.median, true);
 
     for (let k of Object.keys(this.voc)) {
       if (this.voc[k].value === -1) this.voc[k].value = this._maxWeight;
@@ -209,11 +237,15 @@ class TextClassifier {
     console.log("LOG:", "Training model. Iteration:", iteration);
     const accuracy = [0, 0]; // [exact,total]
     this.notPredicted = [];
+    this.predictedValues = [];
+    this.predictedBetas = [];
     dataset.forEach((entry) => {
       const tokenized = this._tokenizeMessage(entry.input);
       if (tokenized.length < 2) return;
       entry.output = Number(entry.output);
       const result = this.predict(entry.input, true);
+      this.predictedValues.push(result.max);
+      this.predictedBetas.push(result.beta);
       const predicted = result.output === entry.output;
       accuracy[1]++;
       if (predicted) {
@@ -235,17 +267,28 @@ class TextClassifier {
             this.model[token][output] = mr > 1 ? 1 : mr;
           });
         }
-        // console.log(this.model[token]);
         const value = this.model[token];
+        // edit
         Object.keys(value).forEach((key) => {
           key = Number(key);
           const sign = key === entry.output ? 1 : 0;
           const multiplier = predicted ? 1 : 5;
           value[key] += sign * multiplier * Math.random();
           if (value[key] < 0) value[key] = 0;
+          value[key] = Number(value[key].toFixed(3));
         });
       });
     });
+    this._thresholds.valueThreshold = this._getMedian(
+      this.predictedValues,
+      this.median,
+      false
+    );
+    this._thresholds.betasThreshold = this._getMedian(
+      this.predictedBetas,
+      this.median,
+      false
+    );
     console.timeEnd("train");
     return accuracy[0] / accuracy[1];
   }
@@ -299,8 +342,7 @@ class TextClassifier {
     const layerized = this._layerize(tokenized);
     const result = [];
     for (let i = 0; i < this.outputs.length; i++) {
-      let q = 0,
-        total = 0;
+      let q = 0;
       layerized.forEach((token) => {
         const values = model[token];
         let addition = 0;
@@ -309,26 +351,24 @@ class TextClassifier {
           if (!sum) console.log("sum", sum);
           addition = values[i] / sum;
         } else {
-          const dlr = this.dlrCache[token];
-          const modelize = this._getDiff(dlr[0], dlr[1]);
-          const mr = modelize.weight / this._maxWeight;
-          addition = modelize.result === i ? (mr > 1 ? 1 : 1) : 0;
+          addition = 0;
         }
         q += addition;
-        total++;
       });
-      result[i] = q / total || 0;
+      result[i] = q; // / total || 0
     }
     const orig = [...result];
     result.sort((a, b) => b - a);
     const max = result[0];
-    return {
+    const final = {
       max,
-      output: orig.indexOf(max),
+      output: max ? orig.indexOf(max) : -1,
       result: orig,
       beta: result[0] / result[1],
       delta: result[0] / result[result.length - 1],
     };
+    if (!auto) final.thresholds = this._thresholds;
+    return final;
   }
 
   async loadModel(path) {
@@ -341,6 +381,7 @@ class TextClassifier {
       });
       this.model = parsed.model;
       this.outputs = parsed.outputs || [0, 1]; // edit
+      this._thresholds = parsed.thresholds || {};
       this.initValue = 1 / this.outputs.length;
       this.ready = true;
       console.log(
@@ -363,6 +404,7 @@ class TextClassifier {
         voc: this.voc,
         outputs: this.outputs,
         accuracy: this._modelAccuracy,
+        thresholds: this._thresholds,
       })
     );
   }
