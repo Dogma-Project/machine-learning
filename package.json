@@ -1,9 +1,11 @@
 {
-  "name": "dogma-classifier",
-  "version": "0.3.30",
+  "name": "dogma-ml",
+  "version": "0.3.31",
   "description": "Machine learning text classifier in js",
-  "main": "index.js",
+  "main": "./dist/index.js",
+  "types": "./types/index.d.ts",
   "scripts": {
+    "example": "tsc && node dist/example.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -17,6 +19,8 @@
   "license": "MIT",
   "devDependencies": {
     "@seald-io/nedb": "^4.0.2",
-    "porter-stemmer-ukrainian": "^0.5.1"
+    "@types/node": "^20.4.8",
+    "porter-stemmer-ukrainian": "^0.5.1",
+    "typescript": "^5.1.6"
   }
 }
