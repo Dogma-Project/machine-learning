@@ -1,4 +1,4 @@
-const { TextClassifier } = require("./index");
+import { TextClassifier } from "./index";
 
 async function run() {
   const dataset = [
@@ -14,7 +14,7 @@ async function run() {
     { input: "Good bye", output: 1 },
   ];
   const classifier = new TextClassifier({});
-  const path = "./data/model.json";
+  const path = "../data/model.json";
   classifier
     .train(dataset)
     .then((_res) => {

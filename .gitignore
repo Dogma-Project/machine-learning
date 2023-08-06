@@ -1,5 +1,9 @@
-data/*
-temp.js
-temp/
+/src/temp.ts
+/src/temp/
+
+dist/temp.js
+dist/temp/
+
+data/
 node_modules
 package-lock.json
