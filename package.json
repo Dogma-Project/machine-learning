@@ -1,6 +1,6 @@
 {
   "name": "dogma-ml",
-  "version": "0.3.33",
+  "version": "0.3.34",
   "description": "Machine learning text classifier in js",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",

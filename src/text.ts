@@ -447,6 +447,7 @@ class TextClassifier {
       this.model = parsed.model;
       this.outputs = parsed.outputs || [0, 1]; // edit
       this.thresholds = parsed.thresholds || {};
+      this.balance = parsed.balance || parsed.outputs.map(() => 1);
       this.initValue = 1 / this.outputs.length;
       this.ready = true;
       console.log(
@@ -471,6 +472,7 @@ class TextClassifier {
         outputs: this.outputs,
         accuracy: this.modelAccuracy,
         thresholds: this.thresholds,
+        balance: this.balance,
       })
     );
   }

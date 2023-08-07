@@ -26,6 +26,13 @@ async function run() {
       const res2 = classifier.predict("Bye, see you later!");
       console.log(res1, res2);
     });
+  /*
+  classifier.loadModel(path).then(() => {
+    const res1 = classifier.predict("Hi, my dear friend!");
+    const res2 = classifier.predict("Bye, see you later!");
+    console.log(res1, res2);
+  });
+  */
 }
 
 run();
