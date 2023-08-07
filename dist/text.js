@@ -36,6 +36,7 @@ class TextClassifier {
         this.model = {};
         this.outputs = [];
         this.initValue = 0.5;
+        this.balance = [];
         this.ready = false;
         this.modelAccuracy = -1;
         this.accuracyRepeats = 0;
@@ -147,6 +148,12 @@ class TextClassifier {
     makeVocabulary(dataset) {
         console.time("voc");
         console.log("LOG:", "Making vocabulary...");
+        this.voc = {};
+        // set outputs
+        const outputs = new Set();
+        dataset.forEach((entry) => outputs.add(entry.output));
+        this.outputs.forEach((entry) => outputs.add(entry));
+        this.outputs = [...outputs];
         // prepare and count new data
         const temp = {};
         dataset.forEach((row) => {
@@ -158,8 +165,9 @@ class TextClassifier {
                     word = this.stemmer(word);
                     if (!word.length)
                         return;
-                    if (!temp[word])
-                        temp[word] = [];
+                    if (!temp[word]) {
+                        temp[word] = Array(this.outputs.length).fill(0);
+                    }
                     const val = temp[word][row.output];
                     temp[word][row.output] = (val || 0) + 1;
                 });
@@ -226,16 +234,18 @@ class TextClassifier {
         });
         weights = weights.filter((w) => w !== -1);
         this.maxWeight = this.getMedian(weights, this.median, true);
-        for (let k of Object.keys(this.voc)) {
-            if (this.voc[k].value === -1)
-                this.voc[k].value = this.maxWeight;
+        for (const key in this.voc) {
+            if (this.voc[key].value === -1) {
+                this.voc[key].value = this.maxWeight;
+            }
+            this.voc[key].stats.forEach((val, i) => {
+                this.balance[i] = (this.balance[i] || 0) + (val || 0);
+            });
         }
-        // set outputs
-        const outputs = new Set();
-        dataset.forEach((entry) => outputs.add(entry.output));
-        this.outputs.forEach((entry) => outputs.add(entry));
-        this.outputs = [...outputs];
+        const q = this.balance.reduce((p, a) => p + a, 0) / this.balance.length;
+        this.balance = this.balance.map((i) => q / i);
         this.initValue = 1 / this.outputs.length;
+        console.log("Training balance", this.balance);
         console.log("LOG:", "Vocabulary is ready. Current size:", size);
         console.timeEnd("voc");
     }
@@ -275,8 +285,6 @@ class TextClassifier {
                         if (!this.maxWeight)
                             console.warn("!!!", this.maxWeight);
                         const mr = modelize.result === output ? modelize.weight / this.maxWeight : 0;
-                        // if (isNaN(mr))
-                        //   console.warn("NaN", mr, modelize.weight, this.maxWeight);
                         this.model[token][output] = mr > 1 ? 1 : mr;
                     });
                 }
@@ -285,7 +293,7 @@ class TextClassifier {
                 Object.keys(value).forEach((k) => {
                     const key = Number(k);
                     const sign = key === entry.output ? 1 : 0;
-                    const multiplier = predicted ? 1 : 5;
+                    const multiplier = predicted ? 1 : 3;
                     value[key] += sign * multiplier * Math.random();
                     if (value[key] < 0)
                         value[key] = 0;
@@ -365,7 +373,7 @@ class TextClassifier {
                 else {
                     addition = 0;
                 }
-                q += addition;
+                q += addition * this.balance[i];
             });
             result[i] = q; // / total || 0
         }

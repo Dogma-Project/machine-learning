@@ -21,6 +21,7 @@ declare class TextClassifier {
     private median;
     private initValue;
     private modelizeConstant;
+    private balance;
     /**
      *
      * @param params
