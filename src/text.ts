@@ -434,6 +434,8 @@ class TextClassifier {
       delta: result[0] / result[result.length - 1],
     };
     if (!auto && final.output !== -1) {
+      final.thresholds = this.thresholds;
+      /*
       final.thresholds = {
         valueThreshold: null,
         betasThreshold: null,
@@ -445,6 +447,7 @@ class TextClassifier {
       if (this.thresholds.betasThreshold) {
         final.thresholds.betasThreshold = this.thresholds.betasThreshold / q;
       }
+      */
     }
     return final;
   }
