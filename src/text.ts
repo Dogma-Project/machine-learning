@@ -29,6 +29,7 @@ class TextClassifier {
   private initValue: number;
   private modelizeConstant: number;
   private balance: number[];
+  private vocabulary: string[];
 
   /**
    *
@@ -53,8 +54,11 @@ class TextClassifier {
     this.cleanReg = cleanReg || /[^a-z0-9\ ']+/gi;
     this.median = median || 0.05;
 
+    this.vocabulary = [];
+    // add cache
     this.voc = {};
     this.vocValues = [];
+
     this.dlrCache = {};
     this.model = {};
     this.outputs = [];
@@ -93,9 +97,8 @@ class TextClassifier {
       .split(" ")
       .map((word) => {
         if (!word.length) return -1;
-        return this.voc[this.stemmer(word)]
-          ? this.voc[this.stemmer(word)].id
-          : 0;
+        word = this.stemmer(word);
+        return this.vocabulary.indexOf(word);
       });
     return arr.filter((token) => token !== -1);
   }
@@ -173,18 +176,6 @@ class TextClassifier {
   private makeVocabulary(dataset: TextClassifierType.Dataset) {
     console.time("voc");
     console.log("LOG:", "Making vocabulary...");
-    this.voc = {};
-
-    // set outputs
-    const outputs: Set<number> = new Set();
-    dataset.forEach((entry) => outputs.add(entry.output));
-    this.outputs.forEach((entry) => outputs.add(entry));
-    this.outputs = [...outputs];
-
-    // prepare and count new data
-    const temp: {
-      [key: string]: TextClassifierType.Vocabulary.EntryStats;
-    } = {};
     dataset.forEach((row) => {
       try {
         const arr = row.input.replace(this.cleanReg, " ").split(" ");
@@ -192,78 +183,92 @@ class TextClassifier {
         arr.forEach((word) => {
           word = this.stemmer(word);
           if (!word.length) return;
-          if (!temp[word]) {
-            temp[word] = Array(this.outputs.length).fill(0);
+          if (this.vocabulary.indexOf(word) === -1) {
+            this.vocabulary.push(word);
           }
-          const val = temp[word][row.output];
-          temp[word][row.output] = (val || 0) + 1;
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    });
+    console.log(
+      "LOG:",
+      "Vocabulary is ready. Current size:",
+      this.vocabulary.length
+    );
+    console.timeEnd("voc");
+  }
+
+  /**
+   *
+   * @param data [{input, output}]
+   *
+   */
+  private handleDataset(dataset: TextClassifierType.Dataset) {
+    console.time("handle");
+    console.log("LOG:", "Handle dataset...");
+    this.voc = {};
+
+    // set outputs
+    const outputs: Set<number> = new Set();
+    dataset.forEach((entry) => outputs.add(entry.output));
+    this.outputs.forEach((entry) => outputs.add(entry));
+    this.outputs = [...outputs];
+    this.initValue = 1 / this.outputs.length;
+
+    // prepare and count new data
+    const sizes: number[] = [];
+    dataset.forEach((row) => {
+      try {
+        const arr = row.input.replace(this.cleanReg, " ").split(" ");
+        if (!arr.length) return;
+        arr.forEach((word) => {
+          word = this.stemmer(word);
+          if (!word.length) return;
+          if (!this.voc[word]) {
+            this.voc[word] = {
+              id: this.vocabulary.indexOf(word), // edit
+              output: 0,
+              value: 0,
+              stats: Array(this.outputs.length).fill(0),
+            };
+          }
+          const val = this.voc[word].stats[row.output];
+          this.voc[word].stats[row.output] = (val || 0) + 1;
+          sizes[row.output] = (sizes[row.output] || 0) + 1;
         });
       } catch (err) {
         console.error(err);
       }
     });
 
-    // add new entries to vocabulary
-    for (let k of Object.keys(temp)) {
-      if (!this.voc[k])
-        this.voc[k] = {
-          id: -1,
-          output: 0,
-          value: 0,
-          stats: temp[k],
-        };
-    }
-
-    // get new size
-    const size = Object.keys(this.voc).length;
-
-    // get size by outputs
-    const sizes: number[] = [];
-    Object.values(this.voc).forEach((item) => {
-      const { stats } = item;
-      for (let k = 0; k < stats.length; k++) {
-        sizes[k] = (sizes[k] || 0) + (stats[k] || 0);
-      }
-    });
-
-    let maxId = 0;
-    for (let k of Object.keys(this.voc)) {
-      if (this.voc[k].id > maxId) maxId = this.voc[k].id;
-      const { stats } = this.voc[k];
-      let values = Object.entries(stats);
-      values = values.map((item) => {
+    for (const key in this.voc) {
+      const { stats } = this.voc[key];
+      const values = Object.entries(stats).map((item) => {
         item[1] = item[1] / sizes[Number(item[0])];
         return item;
       });
       values.sort((a, b) => b[1] - a[1]);
       const alpha = values[0];
       const beta = values[1];
-      this.voc[k].output = Number(alpha[0]);
+      this.voc[key].output = Number(alpha[0]);
       if (beta && beta[1]) {
         const weight = alpha[1] / beta[1];
         if (weight === Infinity) console.warn(weight, alpha, beta);
-        this.voc[k].value = weight;
+        this.voc[key].value = Number(weight.toFixed(3));
       } else {
-        this.voc[k].value = -1;
+        this.voc[key].value = -1;
       }
-    }
-
-    // add new ids
-    for (let k of Object.keys(this.voc)) {
-      if (this.voc[k].id === -1) {
-        maxId++;
-        this.voc[k].id = maxId;
-      }
-      this.vocValues[this.voc[k].id] = this.voc[k];
     }
 
     // get median max weight
-    let weights = Object.values(this.voc).map((item) => {
-      return item.value;
-    });
+    let weights = Object.values(this.voc).map((item) => item.value);
     weights = weights.filter((w) => w !== -1);
-    this.maxWeight = this.getMedian(weights, this.median, true);
+    this.maxWeight = Number(
+      this.getMedian(weights, this.median, true).toFixed(3)
+    );
 
+    // set max weight and balances
     for (const key in this.voc) {
       if (this.voc[key].value === -1) {
         this.voc[key].value = this.maxWeight;
@@ -272,17 +277,20 @@ class TextClassifier {
         this.balance[i] = (this.balance[i] || 0) + (val || 0);
       });
     }
+
+    // transform balance
     const q = this.balance.reduce((p, a) => p + a, 0) / this.balance.length;
     this.balance = this.balance.map((i) => q / i);
-    this.initValue = 1 / this.outputs.length;
+
     console.log("Training balance", this.balance);
-    console.log("LOG:", "Vocabulary is ready. Current size:", size);
-    console.timeEnd("voc");
+    console.log("LOG:", "Dataset is handled.");
+    console.timeEnd("handle");
   }
 
   private _train(dataset: TextClassifierType.Dataset, iteration = 0) {
     console.time("train");
-    this.makeVocabulary(dataset); // edit
+    if (!iteration) this.makeVocabulary(dataset);
+    this.handleDataset(dataset);
     console.log("LOG:", "Training model. Iteration:", iteration);
     const accuracy = [0, 0]; // [exact,total]
     this.notPredicted = [];
@@ -436,14 +444,11 @@ class TextClassifier {
     return final;
   }
 
-  async loadModel(path: string) {
+  async loadModel(path: string): Promise<TextClassifier> {
     try {
       const file = await fs.readFile(path);
       const parsed = JSON.parse(file.toString());
-      this.voc = parsed.voc;
-      Object.values(this.voc).forEach((item) => {
-        this.vocValues[item.id] = item;
-      });
+      this.vocabulary = parsed.vocabulary;
       this.model = parsed.model;
       this.outputs = parsed.outputs || [0, 1]; // edit
       this.thresholds = parsed.thresholds || {};
@@ -453,11 +458,11 @@ class TextClassifier {
       console.log(
         "LOG:",
         "Model successfully loaded!",
-        `Voc size: ${Object.keys(this.voc).length}`,
+        `Voc size: ${Object.keys(this.vocabulary).length}`,
         `Model size: ${Object.keys(this.model).length}`,
         `Outputs: ${this.outputs.length}`
       );
-      return true;
+      return this;
     } catch (err) {
       return Promise.reject(err);
     }
@@ -468,7 +473,7 @@ class TextClassifier {
       path,
       JSON.stringify({
         model: this.model,
-        voc: this.voc,
+        vocabulary: this.vocabulary,
         outputs: this.outputs,
         accuracy: this.modelAccuracy,
         thresholds: this.thresholds,

@@ -15,8 +15,12 @@ async function run() {
   ];
   const classifier = new TextClassifier({});
   const path = "data/model.json";
+
   classifier
-    .train(dataset)
+    .loadModel(path)
+    .then(() => {
+      return classifier.train(dataset);
+    })
     .then((_res) => {
       console.log("NOT PREDICTED:", _res.notPredicted);
       return classifier.saveModel(path);
@@ -26,13 +30,6 @@ async function run() {
       const res2 = classifier.predict("Bye, see you later!");
       console.log(res1, res2);
     });
-  /*
-  classifier.loadModel(path).then(() => {
-    const res1 = classifier.predict("Hi, my dear friend!");
-    const res2 = classifier.predict("Bye, see you later!");
-    console.log(res1, res2);
-  });
-  */
 }
 
 run();

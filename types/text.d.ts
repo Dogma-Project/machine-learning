@@ -22,6 +22,7 @@ declare class TextClassifier {
     private initValue;
     private modelizeConstant;
     private balance;
+    private vocabulary;
     /**
      *
      * @param params
@@ -62,6 +63,12 @@ declare class TextClassifier {
      *
      */
     private makeVocabulary;
+    /**
+     *
+     * @param data [{input, output}]
+     *
+     */
+    private handleDataset;
     private _train;
     /**
      *
@@ -69,7 +76,7 @@ declare class TextClassifier {
      */
     train(dataset: TextClassifierType.Dataset): Promise<TextClassifierType.Model.TrainResult>;
     predict(message: string, auto?: boolean): TextClassifierType.Prediction.Result;
-    loadModel(path: string): Promise<boolean>;
+    loadModel(path: string): Promise<TextClassifier>;
     saveModel(path: string): Promise<void>;
 }
 export default TextClassifier;
