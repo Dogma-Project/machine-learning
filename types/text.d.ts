@@ -23,6 +23,7 @@ declare class TextClassifier {
     private modelizeConstant;
     private balance;
     private vocabulary;
+    private modelVersion;
     /**
      *
      * @param params

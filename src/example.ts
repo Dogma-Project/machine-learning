@@ -15,21 +15,19 @@ async function run() {
   ];
   const classifier = new TextClassifier({});
   const path = "data/model.json";
-
-  classifier
-    .loadModel(path)
-    .then(() => {
-      return classifier.train(dataset);
-    })
-    .then((_res) => {
-      console.log("NOT PREDICTED:", _res.notPredicted);
-      return classifier.saveModel(path);
-    })
-    .then(() => {
-      const res1 = classifier.predict("Hi, my dear friend!");
-      const res2 = classifier.predict("Bye, see you later!");
-      console.log(res1, res2);
-    });
+  try {
+    await classifier.loadModel(path);
+    console.log("Model loaded");
+  } catch (err) {
+    // err
+  }
+  const _res = await classifier.train(dataset);
+  console.log("NOT PREDICTED:", _res.notPredicted);
+  await classifier.saveModel(path);
+  const res1 = classifier.predict("Hi, my dear friend!");
+  const res2 = classifier.predict("Bye, see you later!");
+  console.log(res1);
+  console.log(res2);
 }
 
 run();

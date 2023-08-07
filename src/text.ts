@@ -30,6 +30,7 @@ class TextClassifier {
   private modelizeConstant: number;
   private balance: number[];
   private vocabulary: string[];
+  private modelVersion: number;
 
   /**
    *
@@ -77,6 +78,7 @@ class TextClassifier {
     this.notPredicted = [];
     this.predictedValues = [];
     this.predictedBetas = [];
+    this.modelVersion = 10;
   }
 
   /**
@@ -270,12 +272,14 @@ class TextClassifier {
 
     // set max weight and balances
     for (const key in this.voc) {
+      const { id } = this.voc[key];
       if (this.voc[key].value === -1) {
         this.voc[key].value = this.maxWeight;
       }
       this.voc[key].stats.forEach((val, i) => {
         this.balance[i] = (this.balance[i] || 0) + (val || 0);
       });
+      this.vocValues[id] = this.voc[key];
     }
 
     // transform balance
@@ -319,9 +323,9 @@ class TextClassifier {
           this.outputs.forEach((output) => {
             const dlr = this.dlrCache[token];
             const modelize = this.getDiff(dlr[0], dlr[1]);
-            if (!this.maxWeight) console.warn("!!!", this.maxWeight);
             const mr =
               modelize.result === output ? modelize.weight / this.maxWeight : 0;
+            if (!this.maxWeight) console.warn("!!!", this.maxWeight);
             this.model[token][output] = mr > 1 ? 1 : mr;
           });
         }
@@ -409,10 +413,11 @@ class TextClassifier {
         let addition = 0;
         if (values) {
           const sum = Object.values(values).reduce((p, a) => p + a, 0);
-          if (!sum) console.warn("sum", sum, values);
-          addition = values[i] / sum;
-        } else {
-          addition = 0;
+          if (sum) {
+            addition = values[i] / sum;
+          } else {
+            console.warn("sum", sum, values);
+          }
         }
         q += addition * this.balance[i];
       });
@@ -448,8 +453,8 @@ class TextClassifier {
     try {
       const file = await fs.readFile(path);
       const parsed = JSON.parse(file.toString());
-      this.vocabulary = parsed.vocabulary;
-      this.model = parsed.model;
+      this.vocabulary = parsed.vocabulary || [];
+      this.model = parsed.model || {};
       this.outputs = parsed.outputs || [0, 1]; // edit
       this.thresholds = parsed.thresholds || {};
       this.balance = parsed.balance || parsed.outputs.map(() => 1);
@@ -478,6 +483,7 @@ class TextClassifier {
         accuracy: this.modelAccuracy,
         thresholds: this.thresholds,
         balance: this.balance,
+        modelVersion: this.modelVersion,
       })
     );
   }

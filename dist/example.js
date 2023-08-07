@@ -26,20 +26,20 @@ function run() {
         ];
         const classifier = new index_1.TextClassifier({});
         const path = "data/model.json";
-        classifier
-            .loadModel(path)
-            .then(() => {
-            return classifier.train(dataset);
-        })
-            .then((_res) => {
-            console.log("NOT PREDICTED:", _res.notPredicted);
-            return classifier.saveModel(path);
-        })
-            .then(() => {
-            const res1 = classifier.predict("Hi, my dear friend!");
-            const res2 = classifier.predict("Bye, see you later!");
-            console.log(res1, res2);
-        });
+        try {
+            yield classifier.loadModel(path);
+            console.log("Model loaded");
+        }
+        catch (err) {
+            // err
+        }
+        const _res = yield classifier.train(dataset);
+        console.log("NOT PREDICTED:", _res.notPredicted);
+        yield classifier.saveModel(path);
+        const res1 = classifier.predict("Hi, my dear friend!");
+        const res2 = classifier.predict("Bye, see you later!");
+        console.log(res1);
+        console.log(res2);
     });
 }
 run();
