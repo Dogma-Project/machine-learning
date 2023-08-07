@@ -387,8 +387,19 @@ class TextClassifier {
             beta: result[0] / result[1],
             delta: result[0] / result[result.length - 1],
         };
-        if (!auto)
-            final.thresholds = this.thresholds;
+        if (!auto && final.output !== -1) {
+            final.thresholds = {
+                valueThreshold: null,
+                betasThreshold: null,
+            };
+            const q = this.balance[final.output];
+            if (this.thresholds.valueThreshold) {
+                final.thresholds.valueThreshold = this.thresholds.valueThreshold / q;
+            }
+            if (this.thresholds.betasThreshold) {
+                final.thresholds.betasThreshold = this.thresholds.betasThreshold / q;
+            }
+        }
         return final;
     }
     loadModel(path) {
