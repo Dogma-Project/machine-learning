@@ -329,20 +329,18 @@ class TextClassifier {
             const modelize = this.getDiff(dlr[0], dlr[1]);
             const mr =
               modelize.result === output ? modelize.weight / this.maxWeight : 0;
-            if (!this.maxWeight) console.warn("!!!", this.maxWeight);
+            // if (!this.maxWeight) console.warn("!!!", this.maxWeight);
             this.model[token][output] = mr > 1 ? 1 : mr;
           });
         }
         const value = this.model[token];
-        // edit
-        Object.keys(value).forEach((k) => {
+        const multiplier = predicted ? 1 : 3;
+        for (let k in value) {
           const key = Number(k);
           const sign = key === entry.output ? 1 : 0;
-          const multiplier = predicted ? 1 : 3;
           value[key] += sign * multiplier * Math.random();
           if (value[key] < 0) value[key] = 0;
-          value[key] = Number(value[key].toFixed(3));
-        });
+        }
       });
     });
     this.thresholds.valueThreshold = this.getMedian(
@@ -439,19 +437,6 @@ class TextClassifier {
     };
     if (!auto && final.output !== -1) {
       final.thresholds = this.thresholds;
-      /*
-      final.thresholds = {
-        valueThreshold: null,
-        betasThreshold: null,
-      };
-      const q = this.balance[final.output];
-      if (this.thresholds.valueThreshold) {
-        final.thresholds.valueThreshold = this.thresholds.valueThreshold / q;
-      }
-      if (this.thresholds.betasThreshold) {
-        final.thresholds.betasThreshold = this.thresholds.betasThreshold / q;
-      }
-      */
     }
     return final;
   }

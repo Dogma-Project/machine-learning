@@ -1,6 +1,6 @@
 {
   "name": "dogma-ml",
-  "version": "0.3.38",
+  "version": "0.3.39",
   "description": "Machine learning library",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",

@@ -2,7 +2,7 @@ export namespace TextClassifierType {
   export interface InputEntry {
     input: string;
     output: number;
-    id?: number;
+    id?: string;
   }
 
   export type Dataset = InputEntry[];

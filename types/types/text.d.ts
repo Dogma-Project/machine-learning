@@ -2,7 +2,7 @@ export declare namespace TextClassifierType {
     interface InputEntry {
         input: string;
         output: number;
-        id?: number;
+        id?: string;
     }
     type Dataset = InputEntry[];
     type Stemmer = (word: string) => string;
