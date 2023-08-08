@@ -21,7 +21,8 @@ export namespace TextClassifierType {
     trainingThreshold?: number;
     modelizeConstant?: number;
     cleanReg?: RegExp;
-    median?: number;
+    medianMaxWeight?: number;
+    medianMinThreshold?: number;
   }
 
   export type TokenizedMessage = number[];

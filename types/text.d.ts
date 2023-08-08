@@ -18,7 +18,8 @@ declare class TextClassifier {
     private stemmer;
     private trainingThreshold;
     private cleanReg;
-    private median;
+    private medianMaxWeight;
+    private medianMinThreshold;
     private initValue;
     private modelizeConstant;
     private balance;
@@ -31,9 +32,10 @@ declare class TextClassifier {
      * @param params.trainingThreshold
      * @param params.modelizeConstant
      * @param params.cleanReg regexp to clean text. default: /[^a-z0-9\ ']+/gi
-     * @param params.median
+     * @param params.medianMaxWeight top X%
+     * @param params.medianMinThreshold low X%
      */
-    constructor({ stemmer, trainingThreshold, modelizeConstant, cleanReg, median, }: TextClassifierType.ClassParams);
+    constructor({ stemmer, trainingThreshold, modelizeConstant, cleanReg, medianMaxWeight, medianMinThreshold, }: TextClassifierType.ClassParams);
     /**
      *
      * @param input

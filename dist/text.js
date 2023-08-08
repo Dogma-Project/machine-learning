@@ -21,15 +21,17 @@ class TextClassifier {
      * @param params.trainingThreshold
      * @param params.modelizeConstant
      * @param params.cleanReg regexp to clean text. default: /[^a-z0-9\ ']+/gi
-     * @param params.median
+     * @param params.medianMaxWeight top X%
+     * @param params.medianMinThreshold low X%
      */
-    constructor({ stemmer, trainingThreshold, modelizeConstant, cleanReg, median, }) {
+    constructor({ stemmer, trainingThreshold, modelizeConstant, cleanReg, medianMaxWeight, medianMinThreshold, }) {
         // configs
         this.stemmer = stemmer || this.pseudoStemmer;
         this.trainingThreshold = trainingThreshold || 0.99;
         this.modelizeConstant = modelizeConstant || 0.7;
         this.cleanReg = cleanReg || /[^a-z0-9\ ']+/gi;
-        this.median = median || 0.05;
+        this.medianMaxWeight = medianMaxWeight || 0.06;
+        this.medianMinThreshold = medianMinThreshold || 0.01;
         this.vocabulary = [];
         // add cache
         this.voc = {};
@@ -237,7 +239,7 @@ class TextClassifier {
         // get median max weight
         let weights = Object.values(this.voc).map((item) => item.value);
         weights = weights.filter((w) => w !== -1);
-        this.maxWeight = Number(this.getMedian(weights, this.median, true).toFixed(3));
+        this.maxWeight = Number(this.getMedian(weights, this.medianMaxWeight, true).toFixed(3));
         // set max weight and balances
         for (const key in this.voc) {
             const { id } = this.voc[key];
@@ -310,8 +312,8 @@ class TextClassifier {
                 });
             });
         });
-        this.thresholds.valueThreshold = this.getMedian(this.predictedValues, this.median, false);
-        this.thresholds.betasThreshold = this.getMedian(this.predictedBetas, this.median, false);
+        this.thresholds.valueThreshold = this.getMedian(this.predictedValues, this.medianMinThreshold, false);
+        this.thresholds.betasThreshold = this.getMedian(this.predictedBetas, this.medianMinThreshold, false);
         console.timeEnd("train");
         return accuracy[0] / accuracy[1];
     }
