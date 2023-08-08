@@ -386,7 +386,7 @@ class TextClassifier {
       } while (cond1 && cond2 && cond3 && cond4);
       this.ready = true;
       const result: TextClassifierType.Model.TrainResult = {
-        accuracy: acc,
+        accuracy: this.modelAccuracy,
         iterations: iteration,
         notPredicted: this.notPredicted,
       };
