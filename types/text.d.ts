@@ -3,8 +3,6 @@ declare class TextClassifier {
     ready: boolean;
     private voc;
     private vocValues;
-    private dlrCache;
-    private diffCache;
     private model;
     private outputs;
     private modelAccuracy;
@@ -20,11 +18,14 @@ declare class TextClassifier {
     private cleanReg;
     private medianMaxWeight;
     private medianMinThreshold;
+    private diffMaxValue;
+    private predictedWeightMultiplier;
     private initValue;
     private modelizeConstant;
     private balance;
     private vocabulary;
     private modelVersion;
+    private caches;
     /**
      *
      * @param params
@@ -35,7 +36,7 @@ declare class TextClassifier {
      * @param params.medianMaxWeight top X%
      * @param params.medianMinThreshold low X%
      */
-    constructor({ stemmer, trainingThreshold, modelizeConstant, cleanReg, medianMaxWeight, medianMinThreshold, }: TextClassifierType.ClassParams);
+    constructor({ stemmer, trainingThreshold, modelizeConstant, cleanReg, medianMaxWeight, medianMinThreshold, diffMaxValue, predictedWeightMultiplier, }: TextClassifierType.ClassParams);
     /**
      *
      * @param input
@@ -52,6 +53,7 @@ declare class TextClassifier {
      */
     private layerize;
     private getDiff;
+    private clearCache;
     /**
      *
      * @param values

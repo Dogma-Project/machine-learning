@@ -18,6 +18,8 @@ export declare namespace TextClassifierType {
         cleanReg?: RegExp;
         medianMaxWeight?: number;
         medianMinThreshold?: number;
+        diffMaxValue?: number;
+        predictedWeightMultiplier?: number;
     }
     type TokenizedMessage = number[];
     namespace Vocabulary {
