@@ -1,7 +1,7 @@
 {
   "name": "dogma-ml",
-  "version": "0.3.41",
-  "description": "Machine learning library",
+  "version": "0.3.45",
+  "description": "Machine learning library from Dogma Project",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",
   "scripts": {
@@ -15,12 +15,19 @@
     "classification",
     "classifier"
   ],
-  "author": "rotegott",
+  "author": "Pluto Rotegott <rotegott@dogma-project.org> (https://dogma-project.org/)",
   "license": "MIT",
   "devDependencies": {
-    "@seald-io/nedb": "^4.0.2",
     "@types/node": "^20.4.8",
-    "porter-stemmer-ukrainian": "^0.5.1",
     "typescript": "^5.1.6"
+  },
+  "homepage": "https://dogma-project.org/",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Dogma-Project/machine-learning.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Dogma-Project/machine-learning/issues",
+    "email": "rotegott@dogma-project.org"
   }
 }
