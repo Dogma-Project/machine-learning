@@ -128,7 +128,6 @@ class Markov {
           break;
         }
         iterations++;
-        console.log("Iterations", 1, iterations);
       }
       if (iterations === this.maxIterations) throw "Not enough training data";
       return chain;
@@ -155,7 +154,6 @@ class Markov {
         cond1 = iterations <= this.maxIterations;
         cond2 = this.props.input.includes(chain.join(" "));
         cond3 = chain.length < minLength;
-        console.log("Iterations", 2, iterations);
       } while (cond1 && (cond2 || cond3));
       if (!cond1) return Promise.reject("Not enough training data");
       return Promise.resolve(chain.join(" "));
