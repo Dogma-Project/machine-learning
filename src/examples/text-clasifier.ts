@@ -1,4 +1,4 @@
-import { TextClassifier } from "./index";
+import { TextClassifier } from "../index";
 
 async function run() {
   const dataset = [

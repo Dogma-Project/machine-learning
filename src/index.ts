@@ -1,3 +1,4 @@
-import TextClassifier from "./text";
+import TextClassifier from "./text-classifier";
+import MarkovGen from "./markov";
 
-export { TextClassifier };
+export { TextClassifier, MarkovGen };
