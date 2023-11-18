@@ -1,11 +1,12 @@
 {
   "name": "dogma-ml",
-  "version": "0.4.2",
+  "version": "0.5.1",
   "description": "Machine learning library from Dogma Project",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",
   "scripts": {
     "example-text-classifier": "tsc && node dist/examples/text-classifier.js",
+    "example-blind-classifier": "tsc && node dist/examples/blind-classifier.js",
     "example-markov-gen": "tsc && node dist/examples/markov.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
