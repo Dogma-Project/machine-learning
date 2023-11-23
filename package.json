@@ -1,5 +1,5 @@
 {
-  "name": "dogma-ml",
+  "name": "@dogma-project/ml",
   "version": "0.5.1",
   "description": "Machine learning library from Dogma Project",
   "main": "./dist/index.js",
